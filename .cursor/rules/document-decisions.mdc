@@ -1,0 +1,14 @@
+---
+description: Record product and engineering architecture decisions in docs/
+alwaysApply: true
+---
+
+# Document architecture decisions
+
+Before finishing work that changes product direction or engineering architecture (layout, build system, FFI, shared modules, plugin formats, dependency strategy, identity/codes, etc.):
+
+1. Read `docs/README.md` and the relevant files under `docs/architecture/`.
+2. Add or update an ADR in `docs/decisions/` following `docs/decisions/README.md`.
+3. Update architecture docs when the system shape or developer how-to changes.
+
+Do not leave those decisions only in chat or commit messages. Keep `README.md` limited to prerequisites and first-build; detailed guidance belongs in `docs/`.
