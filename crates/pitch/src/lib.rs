@@ -22,8 +22,8 @@ pub use smoothed::SmoothedValue;
 pub use target::{MidiNoteTarget, PitchTarget, ScalePitchTarget};
 pub use yin::{YinDetector, SCHEMA_MAX_F0_HZ, SCHEMA_MIN_F0_HZ};
 
-/// Default `minF0Hz`.
-pub const DEFAULT_MIN_F0_HZ: f32 = 100.0;
+/// Default `minF0Hz` (detection floor / PDC latency tradeoff).
+pub const DEFAULT_MIN_F0_HZ: f32 = 50.0;
 /// Upper detect limit (independent of min bound).
 pub const MAX_F0_HZ: f32 = 1200.0;
 /// UI / param smoothing time (ms).

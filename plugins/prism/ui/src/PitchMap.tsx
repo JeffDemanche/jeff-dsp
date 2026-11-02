@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-const MIDI_LO = 36; // C2
+const MIDI_LO = 24; // C1 (~32 Hz) — show baritone/bass input
 const MIDI_HI = 84; // C6
 const W = 640;
 const H = 120;
@@ -124,7 +124,7 @@ export function PitchMap() {
   const inputY = inputInRange ? midiToY(inputMidi) : H / 2;
   const inputX = PAD_X + 36;
 
-  const guideMarks = [36, 48, 60, 72, 84];
+  const guideMarks = [24, 36, 48, 60, 72, 84];
 
   return (
     <section className="pitch-map" aria-label="Pitch map">

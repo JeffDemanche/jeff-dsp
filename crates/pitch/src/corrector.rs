@@ -334,11 +334,11 @@ mod tests {
     #[test]
     fn latency_scales_with_min_f0() {
         let mut params = CorrectorParams::default();
-        params.min_f0_hz = 100.0;
+        params.min_f0_hz = 50.0;
         let node_lo = Corrector::new_scale(48_000.0, &params);
         params.min_f0_hz = 200.0;
         let node_hi = Corrector::new_scale(48_000.0, &params);
-        assert_eq!(node_lo.reported_latency_samples(), 480);
+        assert_eq!(node_lo.reported_latency_samples(), 960);
         assert_eq!(node_hi.reported_latency_samples(), 240);
     }
 

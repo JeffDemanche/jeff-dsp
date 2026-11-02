@@ -93,9 +93,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createP
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { paramMinF0Hz, 1 },
-        "Min F0",
-        juce::NormalisableRange<float> (80.0f, 200.0f, 0.1f),
-        100.0f,
+        "F0 Floor",
+        juce::NormalisableRange<float> (50.0f, 200.0f, 0.1f),
+        50.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
@@ -134,27 +134,39 @@ PrismDspMetering PrismAudioProcessor::getMeteringSnapshot() const
 
 void PrismAudioProcessor::syncParamsToDsp()
 {
-    auto denormalised = [this] (const char* id) -> float
+    // APVTS getRawParameterValue() is already denormalised (Hz, ms, …).
+    // Do NOT convertFrom0to1 on it — that clamps e.g. minF0=80 → range max 200.
+    auto raw = [this] (const char* id) -> float
+    {
+        auto* v = apvts.getRawParameterValue (id);
+        jassert (v != nullptr);
+        return v->load();
+    };
+
+    auto choiceIndex = [this] (const char* id) -> int
     {
         auto* param = apvts.getParameter (id);
         jassert (param != nullptr);
-        return param->convertFrom0to1 (apvts.getRawParameterValue (id)->load());
+        // Choice params expose normalised 0–1 via getValue(); map to index.
+        if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (param))
+            return choice->getIndex();
+        return juce::roundToInt (param->convertFrom0to1 (param->getValue()));
     };
 
     PrismDspParams p {};
-    p.key_semitone = static_cast<uint8_t> (juce::roundToInt (denormalised (paramKeySemitone)));
-    p.scale = static_cast<uint8_t> (juce::roundToInt (denormalised (paramScale)));
-    p.reference_hz = denormalised (paramReferenceHz);
-    p.retune_speed_ms = denormalised (paramRetuneSpeedMs);
-    p.correction_amount = denormalised (paramCorrectionAmount);
-    p.correction_range_semitones = denormalised (paramCorrectionRange);
-    p.vibrato_preserve = denormalised (paramVibratoPreserve);
-    p.formant_follow = denormalised (paramFormantFollow);
-    p.quantize_dead_zone_cents = denormalised (paramDeadZone);
-    p.mix = denormalised (paramMix);
-    p.min_f0_hz = denormalised (paramMinF0Hz);
-    p.dry_level = denormalised (paramDryLevel);
-    p.dry_correct = apvts.getRawParameterValue (paramDryCorrect)->load() >= 0.5f ? 1 : 0;
+    p.key_semitone = static_cast<uint8_t> (choiceIndex (paramKeySemitone));
+    p.scale = static_cast<uint8_t> (choiceIndex (paramScale));
+    p.reference_hz = raw (paramReferenceHz);
+    p.retune_speed_ms = raw (paramRetuneSpeedMs);
+    p.correction_amount = raw (paramCorrectionAmount);
+    p.correction_range_semitones = raw (paramCorrectionRange);
+    p.vibrato_preserve = raw (paramVibratoPreserve);
+    p.formant_follow = raw (paramFormantFollow);
+    p.quantize_dead_zone_cents = raw (paramDeadZone);
+    p.mix = raw (paramMix);
+    p.min_f0_hz = raw (paramMinF0Hz);
+    p.dry_level = raw (paramDryLevel);
+    p.dry_correct = raw (paramDryCorrect) >= 0.5f ? 1 : 0;
     prism_dsp_set_params (dsp.get(), &p);
 }
 

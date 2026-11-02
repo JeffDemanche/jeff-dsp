@@ -21,8 +21,8 @@ export default function App() {
       <h1>Prism</h1>
       <p className="subtitle">
         MIDI multi-voice pitch prism · shared f0 + per-note TD-PSOLA (up to 8
-        notes). Voices Level is wet gain, not voice count. Route MIDI in;
-        uncheck Mute audio input in Standalone if silent.
+        notes). Voices Level is wet gain. F0 Floor down to 50 Hz (more latency;
+        low floors use a cheaper decimated detector to avoid xruns).
       </p>
 
       <PitchMap />

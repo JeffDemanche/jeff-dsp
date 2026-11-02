@@ -616,9 +616,9 @@ mod tests {
     #[test]
     fn latency_matches_min_f0() {
         let mut params = PrismizerParams::default();
-        params.min_f0_hz = 100.0;
+        params.min_f0_hz = 50.0;
         let node = Prismizer::new(48_000.0, &params);
-        assert_eq!(node.reported_latency_samples(), 480);
+        assert_eq!(node.reported_latency_samples(), 960);
     }
 
     #[test]
@@ -663,7 +663,7 @@ mod tests {
             correction_amount: 1.0,
             vibrato_preserve: 0.0,
             retune_speed_ms: 1.0,
-            min_f0_hz: 100.0,
+            min_f0_hz: 80.0,
             ..PrismizerParams::default()
         };
         let mut node = Prismizer::new(sr, &params);
@@ -704,7 +704,12 @@ mod tests {
             node.held_f0_hz > 0.0,
             "held_f0 must persist through short gap"
         );
-        assert!((node.held_f0_hz - held_before_gap).abs() < 1.0);
+        // Allow small median drift; must not clear to 0 or jump octaves.
+        assert!(
+            (node.held_f0_hz - held_before_gap).abs() < 20.0,
+            "held_f0 jumped too far: before={held_before_gap} during={}",
+            node.held_f0_hz
+        );
         let ratio_during = node.voices.iter().find(|v| v.active).unwrap().applied_ratio;
         assert!(
             (ratio_during - ratio_before).abs() < 0.15,

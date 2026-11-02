@@ -22,7 +22,7 @@ typedef struct PrismDspParams {
     float formant_follow;               /* 0–1 */
     float quantize_dead_zone_cents;     /* 0–50 (dryCorrect only) */
     float mix;                          /* 0–1 MIDI voices level */
-    float min_f0_hz;                    /* 80–200 */
+    float min_f0_hz;                    /* 50–200 detection floor / latency */
     float dry_level;                    /* 0–1 dry / dryCorrect underlay */
     uint8_t dry_correct;                /* 0/1 scale-correct the dry path */
 } PrismDspParams;
