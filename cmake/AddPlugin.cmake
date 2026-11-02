@@ -9,6 +9,7 @@
 #   [NEEDS_MIDI_OUTPUT FALSE]
 #   [IS_MIDI_EFFECT FALSE]
 #   [EDITOR_WANTS_KEYBOARD_FOCUS FALSE]
+#   [WEB_UI FALSE]            # enable JUCE WebBrowser + juce_gui_extra
 #   [FORMATS VST3 AU Standalone]
 #   [RUST_CRATE path/to/Cargo.toml]
 #   [RUST_TARGET crate_name]
@@ -17,7 +18,7 @@
 #
 # Shared defaults for every plugin in this monorepo.
 function(dsp_add_plugin target_name)
-    set(options)
+    set(options WEB_UI)
     set(oneValueArgs
         PRODUCT_NAME
         PLUGIN_CODE
@@ -69,12 +70,18 @@ function(dsp_add_plugin target_name)
         set(ARG_IS_MIDI_EFFECT FALSE)
     endif()
     if(NOT DEFINED ARG_EDITOR_WANTS_KEYBOARD_FOCUS)
-        set(ARG_EDITOR_WANTS_KEYBOARD_FOCUS FALSE)
+        if(ARG_WEB_UI)
+            set(ARG_EDITOR_WANTS_KEYBOARD_FOCUS TRUE)
+        else()
+            set(ARG_EDITOR_WANTS_KEYBOARD_FOCUS FALSE)
+        endif()
     endif()
     if(NOT ARG_FORMATS)
         set(ARG_FORMATS VST3 AU Standalone)
     endif()
 
+    # Standalone opens CoreAudio inputs; without this macOS never prompts and the
+    # app will not appear under System Settings → Privacy → Microphone.
     juce_add_plugin("${target_name}"
         COMPANY_NAME "${ARG_COMPANY_NAME}"
         BUNDLE_ID "${ARG_BUNDLE_ID}"
@@ -88,13 +95,23 @@ function(dsp_add_plugin target_name)
         PLUGIN_CODE "${ARG_PLUGIN_CODE}"
         FORMATS ${ARG_FORMATS}
         PRODUCT_NAME "${ARG_PRODUCT_NAME}"
+        MICROPHONE_PERMISSION_ENABLED TRUE
+        MICROPHONE_PERMISSION_TEXT "${ARG_PRODUCT_NAME} needs microphone / audio input access to process live audio."
     )
 
     target_sources("${target_name}" PRIVATE ${ARG_SOURCES})
 
+    if(ARG_WEB_UI)
+        set(_web_browser 1)
+        set(_gui_extra juce::juce_gui_extra)
+    else()
+        set(_web_browser 0)
+        set(_gui_extra "")
+    endif()
+
     target_compile_definitions("${target_name}"
         PUBLIC
-            JUCE_WEB_BROWSER=0
+            JUCE_WEB_BROWSER=${_web_browser}
             JUCE_USE_CURL=0
             JUCE_VST3_CAN_REPLACE_VST2=0
     )
@@ -102,6 +119,7 @@ function(dsp_add_plugin target_name)
     target_link_libraries("${target_name}"
         PRIVATE
             juce::juce_audio_utils
+            ${_gui_extra}
             juce::juce_recommended_config_flags
             juce::juce_recommended_lto_flags
             juce::juce_recommended_warning_flags

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prism</title>
+    <style>
+      html, body, #root {
+        margin: 0;
+        min-height: 100%;
+        background: #12141a;
+        color: #e8ecf4;
+        font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+      }
+      body { padding: 16px 20px; }
+      #boot-status { color: #9aa3b5; font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main>
+        <h1>Prism</h1>
+        <p id="boot-status">Loading UI…</p>
+      </main>
+    </div>
+    <script>
+      window.onerror = function (msg, src, line, col, err) {
+        var el = document.getElementById("boot-status");
+        if (el) {
+          el.textContent = "UI error: " + msg + (src ? " @ " + src + ":" + line : "");
+          el.style.color = "#ff8e8e";
+        }
+        return false;
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

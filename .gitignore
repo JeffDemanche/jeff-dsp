@@ -26,4 +26,8 @@ xcuserdata/
 # Rust
 **/*.rs.bk
 
+# Node / WebView UI
+**/node_modules/
+plugins/*/ui/dist/
+
 # Keep artefacts under build/ only

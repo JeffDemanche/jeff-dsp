@@ -3,10 +3,10 @@ name = "prism_dsp"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Realtime DSP core for the Prism plugin"
+description = "Realtime DSP for the Prism pitch-correct plugin"
 
 [lib]
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-shared_dsp = { workspace = true }
+pitch = { workspace = true }

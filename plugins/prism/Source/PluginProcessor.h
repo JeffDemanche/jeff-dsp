@@ -3,7 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 
-struct PrismDsp;
+#include <prism_dsp.h>
 
 class PrismAudioProcessor final : public juce::AudioProcessor
 {
@@ -35,15 +35,25 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorValueTreeState& getAPVTS() noexcept { return apvts; }
+    const juce::AudioProcessorValueTreeState& getAPVTS() const noexcept { return apvts; }
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
 private:
+    void syncParamsToDsp();
+    void updateLatency();
+
     struct DspDeleter
     {
         void operator() (PrismDsp* ptr) const noexcept;
     };
 
+    juce::AudioProcessorValueTreeState apvts;
     std::unique_ptr<PrismDsp, DspDeleter> dsp;
     juce::HeapBlock<float*> channelPtrs;
     size_t channelPtrCapacity = 0;
+    uint32_t lastReportedLatency = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PrismAudioProcessor)
 };

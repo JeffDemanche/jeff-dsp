@@ -8,8 +8,23 @@ Collection of DSP plugin experiments — a monorepo for audio plugins built with
 - [CMake](https://cmake.org/) 3.25+
 - [Rust](https://rustup.rs/) (stable) with `cargo`
 - A C++17 compiler (`clang++`)
+- [Node.js](https://nodejs.org/) 18+ (for Prism WebView UI assets)
 
 ## Quick start
+
+Build UI + plugin in one step:
+
+```bash
+./scripts/build_with_ui.sh prism
+```
+
+Open the Standalone app:
+
+```bash
+./scripts/open_standalone.sh prism
+```
+
+Plugin-only build (assumes UI assets already built when needed):
 
 ```bash
 ./scripts/build.sh prism

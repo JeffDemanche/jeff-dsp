@@ -3,10 +3,14 @@
 version = 4
 
 [[package]]
+name = "pitch"
+version = "0.1.0"
+
+[[package]]
 name = "prism_dsp"
 version = "0.1.0"
 dependencies = [
- "shared_dsp",
+ "pitch",
 ]
 
 [[package]]

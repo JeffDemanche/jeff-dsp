@@ -1,0 +1,6 @@
+[package]
+name = "pitch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Realtime pitch detection, TD-PSOLA shifting, and pitch correction"
