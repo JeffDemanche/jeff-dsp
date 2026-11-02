@@ -86,6 +86,8 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
                        .withOptionsFrom (deadZoneRelay)
                        .withOptionsFrom (mixRelay)
                        .withOptionsFrom (minF0Relay)
+                       .withOptionsFrom (dryLevelRelay)
+                       .withOptionsFrom (dryCorrectRelay)
                        .withResourceProvider ([this] (const auto& url)
                                               {
                                                   return getResource (url);
@@ -101,7 +103,9 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
       formantAttachment (*audioProcessor.getAPVTS().getParameter ("formantFollow"), formantRelay, nullptr),
       deadZoneAttachment (*audioProcessor.getAPVTS().getParameter ("quantizeDeadZoneCents"), deadZoneRelay, nullptr),
       mixAttachment (*audioProcessor.getAPVTS().getParameter ("mix"), mixRelay, nullptr),
-      minF0Attachment (*audioProcessor.getAPVTS().getParameter ("minF0Hz"), minF0Relay, nullptr)
+      minF0Attachment (*audioProcessor.getAPVTS().getParameter ("minF0Hz"), minF0Relay, nullptr),
+      dryLevelAttachment (*audioProcessor.getAPVTS().getParameter ("dryLevel"), dryLevelRelay, nullptr),
+      dryCorrectAttachment (*audioProcessor.getAPVTS().getParameter ("dryCorrect"), dryCorrectRelay, nullptr)
 {
     webComponent.onPageFinished = [this]
     {
@@ -109,10 +113,37 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
     };
 
     addAndMakeVisible (webComponent);
-    setSize (720, 560);
+    setSize (720, 640);
     setResizable (true, true);
-    setResizeLimits (480, 360, 1400, 1000);
+    setResizeLimits (480, 420, 1400, 1100);
     webComponent.goToURL (resolveInitialUrl());
+    startTimerHz (30);
+}
+
+void PrismAudioProcessorEditor::timerCallback()
+{
+    const auto metering = audioProcessor.getMeteringSnapshot();
+    webComponent.emitEventIfBrowserIsVisible ("prismMetering", meteringToVar (metering));
+}
+
+juce::var PrismAudioProcessorEditor::meteringToVar (const PrismDspMetering& m) const
+{
+    auto* obj = new juce::DynamicObject();
+    obj->setProperty ("detectedHz", m.detected_hz);
+    obj->setProperty ("dryTargetHz", m.dry_target_hz);
+    obj->setProperty ("numVoices", static_cast<int> (m.num_voices));
+
+    juce::Array<juce::var> voices;
+    const auto n = juce::jmin (static_cast<int> (m.num_voices), static_cast<int> (PRISM_DSP_MAX_VOICES));
+    for (int i = 0; i < n; ++i)
+    {
+        auto* voice = new juce::DynamicObject();
+        voice->setProperty ("midi", m.voice_midi[i]);
+        voice->setProperty ("targetHz", m.voice_target_hz[i]);
+        voices.add (juce::var (voice));
+    }
+    obj->setProperty ("voices", voices);
+    return juce::var (obj);
 }
 
 juce::String PrismAudioProcessorEditor::resolveInitialUrl() const

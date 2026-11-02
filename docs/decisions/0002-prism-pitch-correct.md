@@ -11,13 +11,12 @@ Prism’s product direction is a “prismizer”: each MIDI voice snaps a monoph
 
 - Add a shared Rust crate `crates/pitch` for the pitch stack (not bloating `shared_dsp`).
 - Port Vamp low-latency behavior/constants into modular pieces: `yin`, `psola`, `scale`, `pitch_math`, `delay_line`, `smoothed`, plus a `PitchTarget` trait and composing `Corrector`.
-- Phase 1 uses `ScalePitchTarget` (chromatic / major / natural minor). MIDI note targets (`MidiNoteTarget`, N× PSOLA) are deferred.
-- Prism’s Rust `staticlib` is a thin FFI shell over `Corrector<ScalePitchTarget>`; JUCE owns APVTS, latency reporting, and state.
-- No MIDI input on Prism in phase 1.
+- Phase 1 used `ScalePitchTarget` (chromatic / major / natural minor) behind `Corrector`. MIDI multi-voice landed in ADR 0004 (`Prismizer`).
+- Prism’s Rust `staticlib` is a thin FFI shell; JUCE owns APVTS, MIDI, latency reporting, and state.
 
 ## Consequences
 
 - Algorithms live in `crates/pitch` and can be reused by other plugins without copying.
-- Prismizer follow-up should share one YIN detector and spawn one PSOLA (and target) per MIDI voice.
+- Multi-voice MIDI prismizer: see [0004-prism-midi-voices.md](0004-prism-midi-voices.md) (shared YIN + N× PSOLA).
 - Numerical behavior should stay aligned with Vamp LL; intentional divergences need docs.
 - PDC latency ≈ one period at `minF0Hz` (same model as Vamp LL).

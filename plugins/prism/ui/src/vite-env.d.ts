@@ -41,6 +41,24 @@ declare module "juce-framework-frontend" {
     };
   }
 
+  export interface ToggleState {
+    getValue(): boolean;
+    setValue(value: boolean): void;
+    properties: {
+      name: string;
+      parameterIndex: number;
+    };
+    valueChangedEvent: {
+      addListener(cb: () => void): number;
+      removeListener(id: number): void;
+    };
+    propertiesChangedEvent: {
+      addListener(cb: () => void): number;
+      removeListener(id: number): void;
+    };
+  }
+
   export function getSliderState(id: string): SliderState;
   export function getComboBoxState(id: string): ComboBoxState;
+  export function getToggleState(id: string): ToggleState;
 }

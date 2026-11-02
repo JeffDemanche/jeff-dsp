@@ -28,7 +28,7 @@ Host / DAW
 |------|------|
 | `plugins/<name>/` | One plugin: `CMakeLists.txt`, `Source/` (C++), optional `rust/` crate, optional `ui/` WebView frontend |
 | `crates/` | Shared Rust libraries (Cargo workspace members) |
-| `crates/pitch/` | Shared pitch DSP (YIN, TD-PSOLA, scale snap, corrector) |
+| `crates/pitch/` | Shared pitch DSP (YIN, TD-PSOLA, scale snap, corrector, Prismizer multi-voice) |
 | `crates/shared_dsp/` | Tiny generic DSP helpers |
 | `modules/` | Shared custom JUCE modules (`juce_add_module`); auto-discovered if a `juce_module_info` file exists |
 | `cmake/` | `Dependencies.cmake` (FetchContent JUCE + Corrosion), `AddPlugin.cmake` (`dsp_add_plugin`) |
@@ -57,6 +57,12 @@ JUCE and Corrosion are downloaded via FetchContent on first configure (pinned ve
 `dsp_add_plugin` sets `MICROPHONE_PERMISSION_ENABLED` so Standalone Info.plists include `NSMicrophoneUsageDescription`. Without that key, macOS will not prompt and the app will not appear under **System Settings → Privacy & Security → Microphone**.
 
 `scripts/open_standalone.sh` ad-hoc codesigns the `.app` with the bundle id before launch so TCC can track it. On first open, allow the microphone prompt (or enable the app in that Privacy list). Also uncheck **Mute audio input** in Options → Audio/MIDI Settings.
+
+## Prism
+
+Prism is a stereo **audio effect that accepts MIDI**. Shared YIN detects the input f0; each held MIDI note drives a TD-PSOLA voice. Optional `dryCorrect` scale-corrects the underlay (`dryLevel`); `mix` is the MIDI voices level. See ADR 0002 / 0004.
+
+The editor pushes a `prismMetering` event (~30 Hz) to the WebView for the pitch-map visualizer (input f0 → active MIDI targets).
 
 ## Prism WebView UI
 

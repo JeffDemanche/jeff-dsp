@@ -5,6 +5,8 @@
   --text: #e8ecf4;
   --muted: #9aa3b5;
   --accent: #6ea8fe;
+  --voice: #7dd3a7;
+  --dry: #c9a227;
   --border: #2a3140;
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   line-height: 1.4;
@@ -35,15 +37,29 @@ h1 {
 }
 
 .subtitle {
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.section-title {
+  margin: 18px 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px 18px;
+}
+
+.grid.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .control {
@@ -79,4 +95,101 @@ select {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 10px;
+}
+
+.toggle {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0f1218;
+  color: var(--muted);
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.toggle.on {
+  background: #1a2740;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.pitch-map {
+  margin: 0 0 8px;
+}
+
+.pitch-map-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pitch-map-header .value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.pitch-map-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.pitch-map-bg {
+  fill: transparent;
+}
+
+.pitch-guide {
+  stroke: #2f3645;
+  stroke-width: 1;
+}
+
+.pitch-guide-label {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+.pitch-map-link {
+  stroke: rgba(110, 168, 254, 0.45);
+  stroke-width: 1.5;
+}
+
+.pitch-input {
+  fill: var(--accent);
+  stroke: #0f1218;
+  stroke-width: 1.5;
+}
+
+.pitch-input-label {
+  fill: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pitch-dry {
+  fill: var(--dry);
+  opacity: 0.85;
+}
+
+.pitch-voice {
+  fill: #163528;
+  stroke: var(--voice);
+  stroke-width: 1.5;
+}
+
+.pitch-voice-label {
+  fill: var(--voice);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.pitch-empty {
+  fill: var(--muted);
+  font-size: 12px;
 }

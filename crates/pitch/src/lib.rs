@@ -5,6 +5,7 @@
 pub mod corrector;
 pub mod delay_line;
 pub mod pitch_math;
+pub mod prismizer;
 pub mod psola;
 pub mod scale;
 pub mod smoothed;
@@ -14,10 +15,11 @@ pub mod yin;
 pub use corrector::{Corrector, CorrectorParams};
 pub use delay_line::DelayLine;
 pub use pitch_math::{clamp_ratio_to_correction_range, hz_to_midi, midi_to_hz, one_pole_coeff};
+pub use prismizer::{Prismizer, PrismizerMetering, PrismizerParams, MAX_VOICES};
 pub use psola::PsolaShifter;
-pub use scale::{quantize_scale_degree_with_hysteresis, nearest_scale_midi, ScaleKind};
+pub use scale::{nearest_scale_midi, quantize_scale_degree_with_hysteresis, ScaleKind};
 pub use smoothed::SmoothedValue;
-pub use target::{PitchTarget, ScalePitchTarget};
+pub use target::{MidiNoteTarget, PitchTarget, ScalePitchTarget};
 pub use yin::{YinDetector, SCHEMA_MAX_F0_HZ, SCHEMA_MIN_F0_HZ};
 
 /// Default `minF0Hz`.

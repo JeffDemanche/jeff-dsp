@@ -1,4 +1,4 @@
-//! Pitch target providers (scale snap now; MIDI note later).
+//! Pitch target providers (scale snap and MIDI note).
 
 use crate::pitch_math::{hz_to_midi, midi_to_hz};
 use crate::scale::{quantize_scale_degree_with_hysteresis, ScaleKind};
@@ -101,8 +101,7 @@ impl PitchTarget for ScalePitchTarget {
     }
 }
 
-/// Placeholder for prismizer: snap detected pitch toward a fixed MIDI note.
-#[allow(dead_code)]
+/// Snap detected pitch toward a fixed MIDI note (prismizer voice target).
 pub struct MidiNoteTarget {
     pub midi_note: f32,
 }
@@ -110,6 +109,10 @@ pub struct MidiNoteTarget {
 impl MidiNoteTarget {
     pub fn new(midi_note: f32) -> Self {
         Self { midi_note }
+    }
+
+    pub fn set_midi_note(&mut self, midi_note: f32) {
+        self.midi_note = midi_note;
     }
 }
 

@@ -3,6 +3,8 @@ dsp_add_plugin(Prism
     PLUGIN_CODE Prsm
     BUNDLE_ID com.jeffdsp.prism
     FORMATS VST3 AU Standalone
+    NEEDS_MIDI_INPUT TRUE
+    IS_SYNTH FALSE
     WEB_UI
     RUST_CRATE "${CMAKE_CURRENT_SOURCE_DIR}/rust/Cargo.toml"
     RUST_TARGET prism_dsp

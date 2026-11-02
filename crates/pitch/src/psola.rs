@@ -135,10 +135,12 @@ impl PsolaShifter {
         let pa = self.last_period.max(2.0);
         let min_fill = ((3.0 * pa).ceil() as usize).saturating_add(8);
 
+        // Temporary first-pass range (±2 octaves). Octave fold / formant
+        // improvements for larger MIDI shifts are deferred.
         let ratio = if force_unity || (ratio - 1.0).abs() < UNITY_RATIO_EPS {
             1.0
         } else {
-            ratio.clamp(0.5, 2.0)
+            ratio.clamp(0.25, 4.0)
         };
         let follow = if force_unity { 0.0 } else { formant_follow };
 

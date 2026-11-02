@@ -4,7 +4,8 @@
 
 #include <juce_gui_extra/juce_gui_extra.h>
 
-class PrismAudioProcessorEditor final : public juce::AudioProcessorEditor
+class PrismAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                        private juce::Timer
 {
 public:
     explicit PrismAudioProcessorEditor (PrismAudioProcessor&);
@@ -14,8 +15,11 @@ public:
     void resized() override;
 
 private:
+    void timerCallback() override;
+
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url) const;
     juce::String resolveInitialUrl() const;
+    juce::var meteringToVar (const PrismDspMetering& m) const;
 
     struct SinglePageBrowser final : juce::WebBrowserComponent
     {
@@ -63,6 +67,8 @@ private:
     juce::WebSliderRelay deadZoneRelay { "quantizeDeadZoneCents" };
     juce::WebSliderRelay mixRelay { "mix" };
     juce::WebSliderRelay minF0Relay { "minF0Hz" };
+    juce::WebSliderRelay dryLevelRelay { "dryLevel" };
+    juce::WebToggleButtonRelay dryCorrectRelay { "dryCorrect" };
 
     SinglePageBrowser webComponent;
 
@@ -77,6 +83,8 @@ private:
     juce::WebSliderParameterAttachment deadZoneAttachment;
     juce::WebSliderParameterAttachment mixAttachment;
     juce::WebSliderParameterAttachment minF0Attachment;
+    juce::WebSliderParameterAttachment dryLevelAttachment;
+    juce::WebToggleButtonParameterAttachment dryCorrectAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PrismAudioProcessorEditor)
 };

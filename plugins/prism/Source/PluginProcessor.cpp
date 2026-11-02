@@ -14,6 +14,8 @@ constexpr auto paramFormantFollow = "formantFollow";
 constexpr auto paramDeadZone = "quantizeDeadZoneCents";
 constexpr auto paramMix = "mix";
 constexpr auto paramMinF0Hz = "minF0Hz";
+constexpr auto paramDryLevel = "dryLevel";
+constexpr auto paramDryCorrect = "dryCorrect";
 } // namespace
 
 void PrismAudioProcessor::DspDeleter::operator() (PrismDsp* ptr) const noexcept
@@ -85,7 +87,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createP
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { paramMix, 1 },
-        "Mix",
+        "Voices Level",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f),
         1.0f));
 
@@ -95,6 +97,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createP
         juce::NormalisableRange<float> (80.0f, 200.0f, 0.1f),
         100.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { paramDryLevel, 1 },
+        "Dry Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f),
+        1.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { paramDryCorrect, 1 },
+        "Dry Correct",
+        true));
 
     return { params.begin(), params.end() };
 }
@@ -112,6 +125,12 @@ PrismAudioProcessor::PrismAudioProcessor()
 }
 
 PrismAudioProcessor::~PrismAudioProcessor() = default;
+
+PrismDspMetering PrismAudioProcessor::getMeteringSnapshot() const
+{
+    const juce::SpinLock::ScopedLockType lock (meteringLock);
+    return meteringSnapshot;
+}
 
 void PrismAudioProcessor::syncParamsToDsp()
 {
@@ -134,6 +153,8 @@ void PrismAudioProcessor::syncParamsToDsp()
     p.quantize_dead_zone_cents = denormalised (paramDeadZone);
     p.mix = denormalised (paramMix);
     p.min_f0_hz = denormalised (paramMinF0Hz);
+    p.dry_level = denormalised (paramDryLevel);
+    p.dry_correct = apvts.getRawParameterValue (paramDryCorrect)->load() >= 0.5f ? 1 : 0;
     prism_dsp_set_params (dsp.get(), &p);
 }
 
@@ -176,11 +197,26 @@ bool PrismAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 
 void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
-    juce::ignoreUnused (midi);
     juce::ScopedNoDenormals noDenormals;
 
     syncParamsToDsp();
     updateLatency();
+
+    for (const auto metadata : midi)
+    {
+        const auto msg = metadata.getMessage();
+        if (msg.isNoteOn())
+            prism_dsp_note_on (dsp.get(),
+                               static_cast<uint8_t> (msg.getNoteNumber()),
+                               msg.getFloatVelocity());
+        else if (msg.isNoteOff())
+            prism_dsp_note_off (dsp.get(), static_cast<uint8_t> (msg.getNoteNumber()));
+        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+        {
+            for (uint8_t n = 0; n < 128; ++n)
+                prism_dsp_note_off (dsp.get(), n);
+        }
+    }
 
     const auto totalNumInputChannels  = getTotalNumInputChannels();
     const auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -201,6 +237,13 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         channelPtrs[ch] = buffer.getWritePointer (static_cast<int> (ch));
 
     prism_dsp_process (dsp.get(), channelPtrs.getData(), numChannels, numSamples);
+
+    PrismDspMetering metering {};
+    prism_dsp_get_metering (dsp.get(), &metering);
+    {
+        const juce::SpinLock::ScopedLockType lock (meteringLock);
+        meteringSnapshot = metering;
+    }
 }
 
 void PrismAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
