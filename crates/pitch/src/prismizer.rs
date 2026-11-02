@@ -1,5 +1,6 @@
 //! Multi-voice prismizer: shared YIN + per-MIDI-note TD-PSOLA + optional scale dry.
 
+use crate::adsr::{Adsr, AdsrParams};
 use crate::delay_line::DelayLine;
 use crate::pitch_math::{clamp_ratio_to_correction_range, one_pole_coeff};
 use crate::psola::PsolaShifter;
@@ -37,10 +38,15 @@ pub struct PrismizerParams {
     pub min_f0_hz: f32,
     pub dry_level: f32,
     pub dry_correct: bool,
+    pub attack_ms: f32,
+    pub decay_ms: f32,
+    pub sustain: f32,
+    pub release_ms: f32,
 }
 
 impl Default for PrismizerParams {
     fn default() -> Self {
+        let adsr = AdsrParams::default();
         Self {
             key_semitone: 0,
             scale: 1,
@@ -55,6 +61,10 @@ impl Default for PrismizerParams {
             min_f0_hz: DEFAULT_MIN_F0_HZ,
             dry_level: 1.0,
             dry_correct: true,
+            attack_ms: adsr.attack_ms,
+            decay_ms: adsr.decay_ms,
+            sustain: adsr.sustain,
+            release_ms: adsr.release_ms,
         }
     }
 }
@@ -87,6 +97,7 @@ struct VoiceState {
     age: u64,
     target: MidiNoteTarget,
     psola: PsolaShifter,
+    adsr: Adsr,
     corrected_hz: f32,
     applied_ratio: f32,
     psola_path_gain: f32,
@@ -101,6 +112,7 @@ impl VoiceState {
             age: 0,
             target: MidiNoteTarget::new(60.0),
             psola: PsolaShifter::new(sample_rate),
+            adsr: Adsr::new(sample_rate),
             corrected_hz: 0.0,
             applied_ratio: 1.0,
             psola_path_gain: 0.0,
@@ -119,6 +131,7 @@ impl VoiceState {
 
     fn deactivate(&mut self) {
         self.active = false;
+        self.adsr.reset();
         self.reset_dsp();
     }
 }
@@ -189,6 +202,7 @@ pub struct Prismizer {
     dry: DryCorrectState,
     voices: [VoiceState; MAX_VOICES],
     note_age_counter: u64,
+    adsr_params: AdsrParams,
     metering: PrismizerMetering,
 }
 
@@ -237,6 +251,12 @@ impl Prismizer {
             dry: DryCorrectState::new(sr, params.key_semitone.min(11), params.scale.min(2)),
             voices,
             note_age_counter: 0,
+            adsr_params: AdsrParams {
+                attack_ms: params.attack_ms.max(0.0),
+                decay_ms: params.decay_ms.max(0.0),
+                sustain: params.sustain.clamp(0.0, 1.0),
+                release_ms: params.release_ms.max(0.0),
+            },
             metering: PrismizerMetering::default(),
         }
     }
@@ -275,6 +295,12 @@ impl Prismizer {
         self.min_f0_hz
             .set_target(params.min_f0_hz.clamp(SCHEMA_MIN_F0_HZ, SCHEMA_MAX_F0_HZ));
         self.dry_level.set_target(params.dry_level.clamp(0.0, 1.0));
+        self.adsr_params = AdsrParams {
+            attack_ms: params.attack_ms.max(0.0).min(5_000.0),
+            decay_ms: params.decay_ms.max(0.0).min(5_000.0),
+            sustain: params.sustain.clamp(0.0, 1.0),
+            release_ms: params.release_ms.max(0.0).min(5_000.0),
+        };
     }
 
     pub fn reset(&mut self) {
@@ -296,12 +322,14 @@ impl Prismizer {
 
     pub fn note_on(&mut self, midi_note: u8, _velocity: f32) {
         let note = midi_note.min(127);
-        // Retrigger existing note.
+        let adsr_params = self.adsr_params;
+        // Retrigger existing note (including releasing).
         if let Some(v) = self.voices.iter_mut().find(|v| v.active && v.midi_note == note) {
             self.note_age_counter = self.note_age_counter.wrapping_add(1);
             v.age = self.note_age_counter;
             v.reset_dsp();
             v.target.set_midi_note(note as f32);
+            v.adsr.note_on(&adsr_params);
             return;
         }
 
@@ -310,29 +338,51 @@ impl Prismizer {
             .iter()
             .position(|v| !v.active)
             .unwrap_or_else(|| {
+                // Prefer stealing oldest releasing voice, else oldest by age.
                 self.voices
                     .iter()
                     .enumerate()
+                    .filter(|(_, v)| v.active && v.adsr.is_releasing())
                     .min_by_key(|(_, v)| v.age)
                     .map(|(i, _)| i)
-                    .unwrap_or(0)
+                    .unwrap_or_else(|| {
+                        self.voices
+                            .iter()
+                            .enumerate()
+                            .min_by_key(|(_, v)| v.age)
+                            .map(|(i, _)| i)
+                            .unwrap_or(0)
+                    })
             });
 
         self.note_age_counter = self.note_age_counter.wrapping_add(1);
         let voice = &mut self.voices[slot];
+        voice.deactivate();
         voice.active = true;
         voice.midi_note = note;
         voice.age = self.note_age_counter;
         voice.reset_dsp();
         voice.target.set_midi_note(note as f32);
+        voice.adsr.note_on(&adsr_params);
     }
 
     pub fn note_off(&mut self, midi_note: u8) {
         let note = midi_note.min(127);
+        let adsr_params = self.adsr_params;
         for voice in &mut self.voices {
-            if voice.active && voice.midi_note == note {
-                voice.deactivate();
+            if voice.active && voice.midi_note == note && !voice.adsr.is_releasing() {
+                voice.adsr.note_off(&adsr_params);
+                if !voice.adsr.is_active() {
+                    voice.deactivate();
+                }
             }
+        }
+    }
+
+    /// Hard mute all voices (MIDI All Sound Off).
+    pub fn all_sound_off(&mut self) {
+        for voice in &mut self.voices {
+            voice.deactivate();
         }
     }
 
@@ -531,11 +581,19 @@ impl Prismizer {
             let mut active_count = 0_u32;
             let mut voice_midi = [0.0_f32; MAX_VOICES];
             let mut voice_target_hz = [0.0_f32; MAX_VOICES];
+            let adsr_params = self.adsr_params;
 
             for voice in self.voices.iter_mut() {
                 if !voice.active {
                     continue;
                 }
+
+                let env = voice.adsr.process(&adsr_params);
+                if !voice.adsr.is_active() {
+                    voice.deactivate();
+                    continue;
+                }
+
                 let slot = active_count as usize;
                 if slot < MAX_VOICES {
                     voice_midi[slot] = voice.midi_note as f32;
@@ -576,18 +634,17 @@ impl Prismizer {
                 );
                 voice.psola_path_gain += path_coeff * (1.0 - voice.psola_path_gain);
                 let g = voice.psola_path_gain.clamp(0.0, 1.0);
-                sum_l += psola_l * g + delayed_l * (1.0 - g);
-                sum_r += psola_r * g + delayed_r * (1.0 - g);
+                let wet_l = psola_l * g + delayed_l * (1.0 - g);
+                let wet_r = psola_r * g + delayed_r * (1.0 - g);
+                sum_l += wet_l * env;
+                sum_r += wet_r * env;
                 active_count += 1;
             }
 
-            let norm = if active_count > 0 {
-                1.0 / active_count as f32
-            } else {
-                0.0
-            };
-            let voices_l = sum_l * norm * voices_level;
-            let voices_r = sum_r * norm * voices_level;
+            // Each voice keeps full level — no 1/N normalize — so new keys
+            // feel independent rather than ducking existing voices.
+            let voices_l = sum_l * voices_level;
+            let voices_r = sum_r * voices_level;
 
             left[i] = under_l * dry_level + voices_l;
             right[i] = under_r * dry_level + voices_r;
@@ -623,7 +680,12 @@ mod tests {
 
     #[test]
     fn note_on_off_updates_metering_voice_count() {
-        let params = PrismizerParams::default();
+        // Zero release so note_off frees immediately (gate-like).
+        let params = PrismizerParams {
+            release_ms: 0.0,
+            attack_ms: 0.0,
+            ..PrismizerParams::default()
+        };
         let mut node = Prismizer::new(48_000.0, &params);
         node.note_on(60, 1.0);
         node.note_on(64, 1.0);
@@ -634,6 +696,41 @@ mod tests {
         node.note_off(60);
         node.process_stereo(&mut left, &mut right);
         assert_eq!(node.metering().num_voices, 1);
+    }
+
+    #[test]
+    fn note_off_keeps_voice_through_release() {
+        let params = PrismizerParams {
+            attack_ms: 0.0,
+            decay_ms: 0.0,
+            sustain: 1.0,
+            release_ms: 50.0, // 50 ms @ 1 kHz = 50 samples
+            dry_level: 0.0,
+            mix: 1.0,
+            ..PrismizerParams::default()
+        };
+        let mut node = Prismizer::new(1_000.0, &params);
+        node.note_on(60, 1.0);
+        let mut left = vec![0.1_f32; 8];
+        let mut right = left.clone();
+        node.process_stereo(&mut left, &mut right);
+        assert_eq!(node.metering().num_voices, 1);
+
+        node.note_off(60);
+        let mut mid = vec![0.1_f32; 8];
+        let mut mid_r = mid.clone();
+        node.process_stereo(&mut mid, &mut mid_r);
+        assert_eq!(
+            node.metering().num_voices,
+            1,
+            "voice must linger while releasing"
+        );
+
+        // Finish release (~50 samples total from note_off).
+        let mut tail = vec![0.1_f32; 64];
+        let mut tail_r = tail.clone();
+        node.process_stereo(&mut tail, &mut tail_r);
+        assert_eq!(node.metering().num_voices, 0);
     }
 
     #[test]

@@ -2,6 +2,7 @@
 //!
 //! Ported from Vamp `pitch_correct_low_latency` with modular boundaries for Prismizer reuse.
 
+pub mod adsr;
 pub mod corrector;
 pub mod delay_line;
 pub mod pitch_math;
@@ -12,6 +13,7 @@ pub mod smoothed;
 pub mod target;
 pub mod yin;
 
+pub use adsr::{Adsr, AdsrParams, AdsrStage};
 pub use corrector::{Corrector, CorrectorParams};
 pub use delay_line::DelayLine;
 pub use pitch_math::{clamp_ratio_to_correction_range, hz_to_midi, midi_to_hz, one_pole_coeff};

@@ -60,6 +60,13 @@ impl PrismDsp {
         }
     }
 
+    fn all_sound_off(&mut self) {
+        self.ensure_prismizer();
+        if let Some(engine) = self.prismizer.as_mut() {
+            engine.all_sound_off();
+        }
+    }
+
     fn metering(&self) -> PrismizerMetering {
         self.prismizer
             .as_ref()
@@ -111,6 +118,10 @@ fn params_from_c(p: &PrismDspParams) -> PrismizerParams {
         min_f0_hz: p.min_f0_hz,
         dry_level: p.dry_level,
         dry_correct: p.dry_correct != 0,
+        attack_ms: p.attack_ms,
+        decay_ms: p.decay_ms,
+        sustain: p.sustain,
+        release_ms: p.release_ms,
     }
 }
 
@@ -129,6 +140,10 @@ pub struct PrismDspParams {
     pub min_f0_hz: f32,
     pub dry_level: f32,
     pub dry_correct: u8,
+    pub attack_ms: f32,
+    pub decay_ms: f32,
+    pub sustain: f32,
+    pub release_ms: f32,
 }
 
 #[repr(C)]
@@ -192,6 +207,13 @@ pub unsafe extern "C" fn prism_dsp_note_on(dsp: *mut PrismDsp, midi_note: u8, ve
 pub unsafe extern "C" fn prism_dsp_note_off(dsp: *mut PrismDsp, midi_note: u8) {
     if let Some(dsp) = dsp.as_mut() {
         dsp.note_off(midi_note);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn prism_dsp_all_sound_off(dsp: *mut PrismDsp) {
+    if let Some(dsp) = dsp.as_mut() {
+        dsp.all_sound_off();
     }
 }
 

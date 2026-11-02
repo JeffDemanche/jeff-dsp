@@ -25,6 +25,10 @@ typedef struct PrismDspParams {
     float min_f0_hz;                    /* 50–200 detection floor / latency */
     float dry_level;                    /* 0–1 dry / dryCorrect underlay */
     uint8_t dry_correct;                /* 0/1 scale-correct the dry path */
+    float attack_ms;                    /* 0–5000 per-voice ADSR attack */
+    float decay_ms;                     /* 0–5000 per-voice ADSR decay */
+    float sustain;                      /* 0–1 per-voice ADSR sustain level */
+    float release_ms;                   /* 0–5000 per-voice ADSR release */
 } PrismDspParams;
 
 /** Metering snapshot for the pitch→MIDI visualizer. */
@@ -52,6 +56,8 @@ void prism_dsp_set_params(PrismDsp* dsp, const PrismDspParams* params);
 
 void prism_dsp_note_on(PrismDsp* dsp, uint8_t midi_note, float velocity);
 void prism_dsp_note_off(PrismDsp* dsp, uint8_t midi_note);
+/** Hard-mute all voices (MIDI All Sound Off). */
+void prism_dsp_all_sound_off(PrismDsp* dsp);
 
 void prism_dsp_get_metering(const PrismDsp* dsp, PrismDspMetering* out);
 

@@ -88,6 +88,10 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
                        .withOptionsFrom (minF0Relay)
                        .withOptionsFrom (dryLevelRelay)
                        .withOptionsFrom (dryCorrectRelay)
+                       .withOptionsFrom (attackRelay)
+                       .withOptionsFrom (decayRelay)
+                       .withOptionsFrom (sustainRelay)
+                       .withOptionsFrom (releaseRelay)
                        .withResourceProvider ([this] (const auto& url)
                                               {
                                                   return getResource (url);
@@ -105,7 +109,11 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
       mixAttachment (*audioProcessor.getAPVTS().getParameter ("mix"), mixRelay, nullptr),
       minF0Attachment (*audioProcessor.getAPVTS().getParameter ("minF0Hz"), minF0Relay, nullptr),
       dryLevelAttachment (*audioProcessor.getAPVTS().getParameter ("dryLevel"), dryLevelRelay, nullptr),
-      dryCorrectAttachment (*audioProcessor.getAPVTS().getParameter ("dryCorrect"), dryCorrectRelay, nullptr)
+      dryCorrectAttachment (*audioProcessor.getAPVTS().getParameter ("dryCorrect"), dryCorrectRelay, nullptr),
+      attackAttachment (*audioProcessor.getAPVTS().getParameter ("attackMs"), attackRelay, nullptr),
+      decayAttachment (*audioProcessor.getAPVTS().getParameter ("decayMs"), decayRelay, nullptr),
+      sustainAttachment (*audioProcessor.getAPVTS().getParameter ("sustain"), sustainRelay, nullptr),
+      releaseAttachment (*audioProcessor.getAPVTS().getParameter ("releaseMs"), releaseRelay, nullptr)
 {
     webComponent.onPageFinished = [this]
     {

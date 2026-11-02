@@ -69,6 +69,10 @@ private:
     juce::WebSliderRelay minF0Relay { "minF0Hz" };
     juce::WebSliderRelay dryLevelRelay { "dryLevel" };
     juce::WebToggleButtonRelay dryCorrectRelay { "dryCorrect" };
+    juce::WebSliderRelay attackRelay { "attackMs" };
+    juce::WebSliderRelay decayRelay { "decayMs" };
+    juce::WebSliderRelay sustainRelay { "sustain" };
+    juce::WebSliderRelay releaseRelay { "releaseMs" };
 
     SinglePageBrowser webComponent;
 
@@ -85,6 +89,10 @@ private:
     juce::WebSliderParameterAttachment minF0Attachment;
     juce::WebSliderParameterAttachment dryLevelAttachment;
     juce::WebToggleButtonParameterAttachment dryCorrectAttachment;
+    juce::WebSliderParameterAttachment attackAttachment;
+    juce::WebSliderParameterAttachment decayAttachment;
+    juce::WebSliderParameterAttachment sustainAttachment;
+    juce::WebSliderParameterAttachment releaseAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PrismAudioProcessorEditor)
 };

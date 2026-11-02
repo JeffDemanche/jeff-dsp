@@ -16,6 +16,10 @@ constexpr auto paramMix = "mix";
 constexpr auto paramMinF0Hz = "minF0Hz";
 constexpr auto paramDryLevel = "dryLevel";
 constexpr auto paramDryCorrect = "dryCorrect";
+constexpr auto paramAttackMs = "attackMs";
+constexpr auto paramDecayMs = "decayMs";
+constexpr auto paramSustain = "sustain";
+constexpr auto paramReleaseMs = "releaseMs";
 } // namespace
 
 void PrismAudioProcessor::DspDeleter::operator() (PrismDsp* ptr) const noexcept
@@ -109,6 +113,33 @@ juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createP
         "Dry Correct",
         true));
 
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { paramAttackMs, 1 },
+        "Attack",
+        juce::NormalisableRange<float> (0.0f, 5000.0f, 0.1f, 0.35f),
+        5.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { paramDecayMs, 1 },
+        "Decay",
+        juce::NormalisableRange<float> (0.0f, 5000.0f, 0.1f, 0.35f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { paramSustain, 1 },
+        "Sustain",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f),
+        1.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { paramReleaseMs, 1 },
+        "Release",
+        juce::NormalisableRange<float> (0.0f, 5000.0f, 0.1f, 0.35f),
+        80.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
     return { params.begin(), params.end() };
 }
 
@@ -167,6 +198,10 @@ void PrismAudioProcessor::syncParamsToDsp()
     p.min_f0_hz = raw (paramMinF0Hz);
     p.dry_level = raw (paramDryLevel);
     p.dry_correct = raw (paramDryCorrect) >= 0.5f ? 1 : 0;
+    p.attack_ms = raw (paramAttackMs);
+    p.decay_ms = raw (paramDecayMs);
+    p.sustain = raw (paramSustain);
+    p.release_ms = raw (paramReleaseMs);
     prism_dsp_set_params (dsp.get(), &p);
 }
 
@@ -197,11 +232,19 @@ void PrismAudioProcessor::releaseResources()
 
 bool PrismAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    const auto mainIn  = layouts.getMainInputChannelSet();
+    const auto mainOut = layouts.getMainOutputChannelSet();
+
+    if (mainOut != juce::AudioChannelSet::mono()
+        && mainOut != juce::AudioChannelSet::stereo())
         return false;
 
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+    if (mainIn != juce::AudioChannelSet::mono()
+        && mainIn != juce::AudioChannelSet::stereo())
+        return false;
+
+    // Allow mono→stereo upmix; reject stereo→mono downmix.
+    if (mainIn.size() > mainOut.size())
         return false;
 
     return true;
@@ -223,7 +266,9 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                msg.getFloatVelocity());
         else if (msg.isNoteOff())
             prism_dsp_note_off (dsp.get(), static_cast<uint8_t> (msg.getNoteNumber()));
-        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+        else if (msg.isAllSoundOff())
+            prism_dsp_all_sound_off (dsp.get());
+        else if (msg.isAllNotesOff())
         {
             for (uint8_t n = 0; n < 128; ++n)
                 prism_dsp_note_off (dsp.get(), n);
@@ -232,12 +277,18 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     const auto totalNumInputChannels  = getTotalNumInputChannels();
     const auto totalNumOutputChannels = getTotalNumOutputChannels();
+    const auto numSamples             = buffer.getNumSamples();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+        buffer.clear (i, 0, numSamples);
+
+    // Pitch path is mono-source. Stage channel 0 onto both channels so a mic on
+    // interface input 1 (stereo device) or true mono→stereo reaches both ears.
+    // Planar stereo buffers stay in place for future stereo FX after this.
+    if (totalNumOutputChannels >= 2 && buffer.getNumChannels() >= 2 && numSamples > 0)
+        buffer.copyFrom (1, 0, buffer, 0, 0, numSamples);
 
     const auto numChannels = static_cast<uint32_t> (buffer.getNumChannels());
-    const auto numSamples  = static_cast<uint32_t> (buffer.getNumSamples());
 
     if (channelPtrCapacity < numChannels)
     {
@@ -248,7 +299,8 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     for (uint32_t ch = 0; ch < numChannels; ++ch)
         channelPtrs[ch] = buffer.getWritePointer (static_cast<int> (ch));
 
-    prism_dsp_process (dsp.get(), channelPtrs.getData(), numChannels, numSamples);
+    prism_dsp_process (dsp.get(), channelPtrs.getData(), numChannels,
+                       static_cast<uint32_t> (numSamples));
 
     PrismDspMetering metering {};
     prism_dsp_get_metering (dsp.get(), &metering);

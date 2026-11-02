@@ -34,6 +34,14 @@ export default function App() {
         <JuceSlider identifier="mix" />
       </div>
 
+      <h2 className="section-title">Envelope</h2>
+      <div className="grid">
+        <JuceSlider identifier="attackMs" />
+        <JuceSlider identifier="decayMs" />
+        <JuceSlider identifier="sustain" />
+        <JuceSlider identifier="releaseMs" />
+      </div>
+
       <h2 className="section-title">Shared</h2>
       <div className="grid">
         <JuceSlider identifier="retuneSpeedMs" />
